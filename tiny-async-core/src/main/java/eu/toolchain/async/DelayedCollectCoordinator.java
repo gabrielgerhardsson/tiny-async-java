@@ -57,6 +57,8 @@ public class DelayedCollectCoordinator<S, T> implements FutureDone<S>, Runnable 
     public void resolved(S result) {
         caller.resolve(collector, result);
         pending.decrementAndGet();
+        // There's now a slot free in the executor, let's see if there's an AsyncFuture left
+        // to setup and get going.
         checkNext();
     }
 
@@ -99,9 +101,15 @@ public class DelayedCollectCoordinator<S, T> implements FutureDone<S>, Runnable 
             // cancel any available callbacks.
             if (cancel) {
                 while (callables.hasNext()) {
+                    // Step the iterator forward once, ignoring the returned value. This AsyncFuture
+                    // hasn't been setup yet, so there's nothing to cancel.
                     callables.next();
+                    // Indicate to the collector that an AsyncFuture was "cancelled"
                     caller.cancel(collector);
                     cancelled.incrementAndGet();
+                    // The loop will eventually step through all the remaining callables, causing
+                    // x calls to caller.cancel(), indicating the number of AsyncFuture's that
+                    // were cancelled.
                 }
             }
 
