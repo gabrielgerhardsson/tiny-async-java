@@ -153,9 +153,11 @@ public final class RecursionSafeAsyncCaller implements AsyncCaller {
             // Case A: Call immediately, this is default until we've reached deep recursion
             runnable.run();
         } else {
-            // Case B: Defer to a separate thread
-            // This happens when recursion depth of the current thread is larger than limit, to
-            // avoid stack overflow.
+            /*
+             * Case B: Defer to a separate thread
+             * This happens when recursion depth of the current thread is larger than limit, to
+             * avoid stack overflow.
+             */
             executorService.submit(runnable);
         }
 
