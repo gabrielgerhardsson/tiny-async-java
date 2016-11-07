@@ -426,7 +426,7 @@ public class TinyAsync implements AsyncFramework {
         final ExecutorService executor = defaultExecutor();
         final ResolvableFuture<T> future = future();
         executor.execute(
-            new DelayedCollectCoordinator<>(caller, callables, collector, future, parallelism));
+            new DelayedCollectCoordinator<>(executor, caller, callables, collector, future, parallelism));
         return future;
     }
 

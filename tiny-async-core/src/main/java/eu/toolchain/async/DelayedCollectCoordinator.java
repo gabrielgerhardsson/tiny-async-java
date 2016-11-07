@@ -1,8 +1,10 @@
 package eu.toolchain.async;
 
+import eu.toolchain.async.RecursionSafeAsyncCaller;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -20,6 +22,7 @@ public class DelayedCollectCoordinator<S, T> implements FutureDone<S>, Runnable 
     /* lock that must be acquired before using {@link callables} */
     private final Object lock = new Object();
 
+    private RecursionSafeAsyncCaller recursionSafeAsyncCaller;
     private final AsyncCaller caller;
     private final Iterator<? extends Callable<? extends AsyncFuture<? extends S>>> callables;
     private final StreamCollector<? super S, ? extends T> collector;
@@ -31,17 +34,53 @@ public class DelayedCollectCoordinator<S, T> implements FutureDone<S>, Runnable 
     volatile boolean done = false;
 
     public DelayedCollectCoordinator(
+        final ExecutorService executorService,
         final AsyncCaller caller,
         final Collection<? extends Callable<? extends AsyncFuture<? extends S>>> callables,
-        final StreamCollector<S, T> collector, final ResolvableFuture<? super T> future,
-        int parallelism
+        final StreamCollector<S, T> collector,
+        final ResolvableFuture<? super T> future,
+        int parallelism,
+        int maxRecursionDepth
     ) {
+        if (executorService != null) {
+            recursionSafeAsyncCaller =
+                new RecursionSafeAsyncCaller(executorService, caller, maxRecursionDepth);
+        }
         this.caller = caller;
         this.callables = callables.iterator();
         this.collector = collector;
         this.future = future;
         this.parallelism = parallelism;
         this.total = callables.size();
+    }
+
+    public DelayedCollectCoordinator(
+        final ExecutorService executorService,
+        final AsyncCaller caller,
+        final Collection<? extends Callable<? extends AsyncFuture<? extends S>>> callables,
+        final StreamCollector<S, T> collector,
+        final ResolvableFuture<? super T> future,
+        int parallelism
+    ) {
+        /*
+         * The default maxRecursionDepth is 100, based on a failure example where stack overflow
+         * happened at 1700 recursions. This obviously highly depends on the size of each stack
+         * frame, but 100 seems like a sane default.
+         */
+        this(executorService, caller, callables, collector, future, parallelism, 100);
+    }
+
+    public DelayedCollectCoordinator(
+        final AsyncCaller caller,
+        final Collection<? extends Callable<? extends AsyncFuture<? extends S>>> callables,
+        final StreamCollector<S, T> collector, final ResolvableFuture<? super T> future,
+        int parallelism
+    ) {
+        /*
+         * Fallback for maintaining signature stability. This will disable deferred execution and
+         * thus disable stack overflow protection.
+         */
+        this((ExecutorService)null, caller, callables, collector, future, parallelism);
     }
 
     @Override
@@ -57,7 +96,7 @@ public class DelayedCollectCoordinator<S, T> implements FutureDone<S>, Runnable 
     public void resolved(S result) {
         caller.resolve(collector, result);
         pending.decrementAndGet();
-        // There's now a slot free in the executor, let's see if there's an AsyncFuture left
+        // There's now a slot free in the executor, let's see if there's an Callable left
         // to setup and get going.
         checkNext();
     }
@@ -125,18 +164,30 @@ public class DelayedCollectCoordinator<S, T> implements FutureDone<S>, Runnable 
     }
 
     private void setupNext(final Callable<? extends AsyncFuture<? extends S>> next) {
-        final AsyncFuture<? extends S> f;
 
         pending.incrementAndGet();
 
-        try {
-            f = next.call();
-        } catch (final Exception e) {
-            failed(e);
-            return;
-        }
+        Runnable toRun = () -> {
+            AsyncFuture<? extends S> f;
 
-        f.onDone(this);
+            try {
+                f = next.call();
+            } catch (final Exception e) {
+                failed(e);
+                return;
+            }
+
+            if (f != null) {
+                f.onDone(this);
+            }
+        };
+
+        if (recursionSafeAsyncCaller != null) {
+            recursionSafeAsyncCaller.execute(toRun);
+        } else {
+            // Fallback
+            toRun.run();
+        }
     }
 
     private void checkEnd() {

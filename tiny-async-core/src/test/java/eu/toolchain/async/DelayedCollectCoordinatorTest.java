@@ -1,5 +1,6 @@
 package eu.toolchain.async;
 
+import java.util.concurrent.ExecutorService;
 import com.google.common.collect.ImmutableList;
 import org.junit.Before;
 import org.junit.Test;
@@ -15,6 +16,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class DelayedCollectCoordinatorTest {
+    private ExecutorService executorService;
     private AsyncCaller caller;
     private StreamCollector<Object, Object> collector;
     private ResolvableFuture<Object> future;
@@ -30,6 +32,7 @@ public class DelayedCollectCoordinatorTest {
     @SuppressWarnings("unchecked")
     @Before
     public void setup() throws Exception {
+        executorService = mock(ExecutorService.class);
         caller = mock(AsyncCaller.class);
         collector = mock(StreamCollector.class);
         future = mock(ResolvableFuture.class);
@@ -54,7 +57,7 @@ public class DelayedCollectCoordinatorTest {
         final List<Callable<AsyncFuture<Object>>> callables = ImmutableList.of();
 
         final DelayedCollectCoordinator<Object, Object> coordinator =
-            new DelayedCollectCoordinator<Object, Object>(caller, callables, collector, future, 1);
+            new DelayedCollectCoordinator<Object, Object>(executorService, caller, callables, collector, future, 1);
 
         final Object result = new Object();
         final Throwable cause = new Throwable();
@@ -73,7 +76,7 @@ public class DelayedCollectCoordinatorTest {
         final List<Callable<AsyncFuture<Object>>> callables = ImmutableList.of(callable, callable2);
 
         final DelayedCollectCoordinator<Object, Object> coordinator =
-            new DelayedCollectCoordinator<Object, Object>(caller, callables, collector, future, 1);
+            new DelayedCollectCoordinator<Object, Object>(executorService, caller, callables, collector, future, 1);
 
         final Object result = new Object();
         final Throwable cause = new Throwable();
@@ -97,7 +100,7 @@ public class DelayedCollectCoordinatorTest {
             ImmutableList.of(callable, callable2, callable3, callable4);
 
         final DelayedCollectCoordinator<Object, Object> coordinator =
-            new DelayedCollectCoordinator<Object, Object>(caller, callables, collector, future, 1);
+            new DelayedCollectCoordinator<Object, Object>(executorService, caller, callables, collector, future, 1, 2);
 
         final Object result = new Object();
         final Throwable cause = new Throwable();
@@ -112,6 +115,30 @@ public class DelayedCollectCoordinatorTest {
 
         verify(caller, times(3)).cancel(collector);
         verify(caller, times(1)).resolve(collector, result);
+        verify(caller, never()).fail(collector, cause);
+    }
+
+    // This tests fallback code path, for maintaining signature stability with older versions
+    @Test
+    public void testWithNoExecutorService() throws Exception {
+        final List<Callable<AsyncFuture<Object>>> callables = ImmutableList.of(callable, callable2);
+
+        final DelayedCollectCoordinator<Object, Object> coordinator =
+            new DelayedCollectCoordinator<Object, Object>(caller, callables, collector, future, 1);
+
+        final Object result = new Object();
+        final Throwable cause = new Throwable();
+
+        coordinator.run();
+
+        coordinator.resolved(result);
+        verify(collector, never()).end(2, 0, 0);
+
+        coordinator.resolved(result);
+        verify(collector).end(2, 0, 0);
+
+        verify(caller, never()).cancel(collector);
+        verify(caller, times(2)).resolve(collector, result);
         verify(caller, never()).fail(collector, cause);
     }
 
