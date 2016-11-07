@@ -34,112 +34,57 @@ public final class RecursionSafeAsyncCaller implements AsyncCaller {
 
     @Override
     public <T> void resolve(final FutureDone<T> handle, final T result) {
-        execute(new Runnable() {
-            @Override
-            public void run() {
-                caller.resolve(handle, result);
-            }
-        });
+        execute(() -> caller.resolve(handle, result));
     }
 
     @Override
     public <T> void fail(final FutureDone<T> handle, final Throwable error) {
-        execute(new Runnable() {
-            @Override
-            public void run() {
-                caller.fail(handle, error);
-            }
-        });
+        execute(() -> caller.fail(handle, error));
     }
 
     @Override
     public <T> void cancel(final FutureDone<T> handle) {
-        execute(new Runnable() {
-            @Override
-            public void run() {
-                caller.cancel(handle);
-            }
-        });
+        execute(() -> caller.cancel(handle));
     }
 
     @Override
     public void cancel(final FutureCancelled cancelled) {
-        execute(new Runnable() {
-            @Override
-            public void run() {
-                caller.cancel(cancelled);
-            }
-        });
+        execute(() -> caller.cancel(cancelled));
     }
 
     @Override
     public void finish(final FutureFinished finishable) {
-        execute(new Runnable() {
-            @Override
-            public void run() {
-                caller.finish(finishable);
-            }
-        });
+        execute(() -> caller.finish(finishable));
     }
 
     @Override
     public <T> void resolve(final FutureResolved<T> resolved, final T value) {
-        execute(new Runnable() {
-            @Override
-            public void run() {
-                caller.resolve(resolved, value);
-            }
-        });
+        execute(() -> caller.resolve(resolved, value));
     }
 
     @Override
     public <T, R> void resolve(final StreamCollector<T, R> collector, final T result) {
-        execute(new Runnable() {
-            @Override
-            public void run() {
-                caller.resolve(collector, result);
-            }
-        });
+        execute(() -> caller.resolve(collector, result));
     }
 
     @Override
     public <T, R> void fail(final StreamCollector<T, R> collector, final Throwable error) {
-        execute(new Runnable() {
-            @Override
-            public void run() {
-                caller.fail(collector, error);
-            }
-        });
+        execute(() -> caller.fail(collector, error));
     }
 
     @Override
     public <T, R> void cancel(final StreamCollector<T, R> collector) {
-        execute(new Runnable() {
-            @Override
-            public void run() {
-                caller.cancel(collector);
-            }
-        });
+        execute(() -> caller.cancel(collector));
     }
 
     @Override
     public void fail(final FutureFailed failed, final Throwable cause) {
-        execute(new Runnable() {
-            @Override
-            public void run() {
-                caller.fail(failed, cause);
-            }
-        });
+        execute(() -> caller.fail(failed, cause));
     }
 
     @Override
     public <T> void referenceLeaked(final T reference, final StackTraceElement[] stack) {
-        execute(new Runnable() {
-            @Override
-            public void run() {
-                caller.referenceLeaked(reference, stack);
-            }
-        });
+        execute(() -> caller.referenceLeaked(reference, stack));
     }
 
     @Override
