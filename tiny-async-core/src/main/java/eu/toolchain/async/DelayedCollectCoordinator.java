@@ -70,16 +70,16 @@ public class DelayedCollectCoordinator<S, T> implements FutureDone<S>, Runnable 
         this(executorService, caller, callables, collector, future, parallelism, 100);
     }
 
+    /*
+     * Fallback for maintaining signature stability. Using this constructor will disable deferred
+     * execution and thus disable stack overflow protection.
+     */
     public DelayedCollectCoordinator(
         final AsyncCaller caller,
         final Collection<? extends Callable<? extends AsyncFuture<? extends S>>> callables,
         final StreamCollector<S, T> collector, final ResolvableFuture<? super T> future,
         int parallelism
     ) {
-        /*
-         * Fallback for maintaining signature stability. This will disable deferred execution and
-         * thus disable stack overflow protection.
-         */
         this((ExecutorService)null, caller, callables, collector, future, parallelism);
     }
 
