@@ -2,7 +2,10 @@ package eu.toolchain.async;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
+import org.mockito.runners.MockitoJUnitRunner;
 import org.mockito.stubbing.Answer;
 
 import java.util.concurrent.ExecutorService;
@@ -13,29 +16,35 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+@RunWith(MockitoJUnitRunner.class)
 public class RecursionSafeAsyncCallerTest {
     private final Object result = new Object();
     private final Throwable cause = new Exception();
 
-    private ExecutorService executor;
     private AsyncCaller caller;
 
     private RecursionSafeAsyncCaller underTest;
 
+    @Mock
     private FutureDone<Object> done;
+    @Mock
     private FutureCancelled cancelled;
+    @Mock
     private FutureFinished finished;
+    @Mock
     private FutureResolved<Object> resolved;
+    @Mock
     private FutureFailed failed;
 
+    @Mock
     private StreamCollector<Object, Object> streamCollector;
 
     private StackTraceElement[] stack = new StackTraceElement[0];
 
-    @SuppressWarnings("unchecked")
+
     @Before
     public void setup() {
-        executor = mock(ExecutorService.class);
+        ExecutorService executor = mock(ExecutorService.class);
 
         doAnswer(new Answer<Void>() {
             @Override
@@ -48,14 +57,6 @@ public class RecursionSafeAsyncCallerTest {
 
         caller = mock(AsyncCaller.class);
         underTest = new RecursionSafeAsyncCaller(executor, caller);
-
-        done = mock(FutureDone.class);
-        cancelled = mock(FutureCancelled.class);
-        finished = mock(FutureFinished.class);
-        resolved = mock(FutureResolved.class);
-        failed = mock(FutureFailed.class);
-
-        streamCollector = mock(StreamCollector.class);
     }
 
     @Test
