@@ -1,6 +1,6 @@
 /*
  * An AsyncCaller implementation that will try to run the call in the current thread as much as
- * possible, while keeping track of recursion to avoid StackOverflowException in the thread. If
+ * possible, while keeping track of recursion to avoid StackOverflowError in the thread. If
  * recursion becomes too deep, the next call is deferred to a separate thread (normal thread pool).
  * State is kept per-thread - stack overflow will be avoided for any thread that passes this code.
  * It is vital to choose a suitable maximum recursion depth.
