@@ -90,11 +90,11 @@ public final class RecursionSafeAsyncCaller implements AsyncCaller {
     @Override
     public void execute(final Runnable runnable) {
         // Use thread local counter for recursionDepth
-        Integer recursionDepth = recursionDepthPerThread.get();
-        recursionDepth++;
-        recursionDepthPerThread.set(recursionDepth);
+        final Integer recursionDepth = recursionDepthPerThread.get();
+        // ++
+        recursionDepthPerThread.set(recursionDepth + 1);
 
-        if (recursionDepth <= maxRecursionDepth) {
+        if (recursionDepth + 1 <= maxRecursionDepth) {
             // Case A: Call immediately, this is default until we've reached deep recursion
             runnable.run();
         } else {
@@ -106,7 +106,7 @@ public final class RecursionSafeAsyncCaller implements AsyncCaller {
             executorService.submit(runnable);
         }
 
-        recursionDepth--;
+        // --
         recursionDepthPerThread.set(recursionDepth);
     }
 
