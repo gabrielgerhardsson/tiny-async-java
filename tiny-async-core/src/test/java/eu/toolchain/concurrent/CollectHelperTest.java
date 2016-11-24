@@ -1,9 +1,8 @@
 package eu.toolchain.concurrent;
 
-import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Mockito.doNothing;
@@ -50,14 +49,14 @@ public class CollectHelperTest {
 
   @Test(expected = IllegalArgumentException.class)
   public void testZeroSize() {
-    new CollectHelper<From, To>(0, collector, sources, target);
+    new CollectHelper<>(0, collector, sources, target);
   }
 
   @Test
   public void testResolved() throws Exception {
     doNothing().when(helper).add(any(Byte.class), anyObject());
     helper.completed(result);
-    verify(helper).add(CollectHelper.RESOLVED, result);
+    verify(helper).add(CollectHelper.COMPLETED, result);
   }
 
   @Test
@@ -84,17 +83,16 @@ public class CollectHelperTest {
 
   @Test
   public void testCheckFailed() {
-    final Iterator<Stage<?>> futures =
-        ImmutableList.<Stage<?>>of(f1, f2).iterator();
+    final Iterator<Stage<?>> futures = ImmutableList.<Stage<?>>of(f1, f2).iterator();
 
     doReturn(futures).when(sources).iterator();
 
-    assertFalse(helper.failed.get());
+    assertEquals(CollectHelper.PENDING_STATE, helper.state.get());
     assertNotNull(helper.sources);
 
     helper.checkFailed();
 
-    assertTrue(helper.failed.get());
+    assertEquals(CollectHelper.FAILED_STATE, helper.state.get());
     assertNull(helper.sources);
 
     verify(f1, times(1)).cancel();
@@ -103,7 +101,7 @@ public class CollectHelperTest {
     // should only fail once
     helper.checkFailed();
 
-    assertTrue(helper.failed.get());
+    assertEquals(CollectHelper.FAILED_STATE, helper.state.get());
     assertNull(helper.sources);
 
     verify(f1, times(1)).cancel();
@@ -112,8 +110,8 @@ public class CollectHelperTest {
 
   @Test(expected = IllegalStateException.class)
   public void testAddWhenFinished() {
-    helper.finished.set(true);
-    helper.add(CollectHelper.RESOLVED, null);
+    helper.state.set(CollectHelper.COMPLETED_STATE);
+    helper.add(CollectHelper.COMPLETED, null);
   }
 
   @Test
@@ -124,24 +122,24 @@ public class CollectHelperTest {
     doNothing().when(helper).writeAt(any(Integer.class), any(Byte.class), any());
     doNothing().when(helper).done(r);
 
-    assertFalse(helper.finished.get());
-    helper.add(CollectHelper.RESOLVED, null);
-    assertTrue(helper.finished.get());
+    assertEquals(CollectHelper.PENDING_STATE, helper.state.get());
+    helper.add(CollectHelper.COMPLETED, null);
+    assertEquals(CollectHelper.COMPLETED_STATE, helper.state.get());
 
     verify(helper).collect();
-    verify(helper).writeAt(0, CollectHelper.RESOLVED, null);
+    verify(helper).writeAt(0, CollectHelper.COMPLETED, null);
     verify(helper).done(r);
   }
 
   @Test(expected = IllegalStateException.class)
   public void testAddAlreadyFinished() {
     testAdd();
-    helper.add(CollectHelper.RESOLVED, null);
+    helper.add(CollectHelper.COMPLETED, null);
   }
 
-  private static interface From {
+  interface From {
   }
 
-  private static interface To {
+  interface To {
   }
 }
