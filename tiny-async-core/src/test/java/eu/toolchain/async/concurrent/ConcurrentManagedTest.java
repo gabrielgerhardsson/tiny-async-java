@@ -161,7 +161,7 @@ public class ConcurrentManagedTest {
     private void verifyDoto(boolean valid, boolean throwing) throws Exception {
         verify(underTest).borrow();
         verify(borrowed).isValid();
-        verify(async, times(!valid ? 1 : 0)).cancelled();
+        verify(async, times(0)).cancelled();
         verify(async, times(throwing ? 1 : 0)).failed(e);
         verify(borrowed, times(valid ? 1 : 0)).get();
         verify(borrowed, times(valid && !throwing ? 1 : 0)).releasing();
@@ -173,7 +173,13 @@ public class ConcurrentManagedTest {
     @Test
     public void testDotoInvalid() throws Exception {
         setupDoto(false, false);
-        assertEquals(future, underTest.doto(action));
+        boolean didThrow = false;
+        try {
+            underTest.doto(action);
+        } catch (IllegalStateException e) {
+            didThrow = true;
+        }
+        assertEquals("Invalid reference results in exception", true, didThrow);
         verifyDoto(false, false);
     }
 

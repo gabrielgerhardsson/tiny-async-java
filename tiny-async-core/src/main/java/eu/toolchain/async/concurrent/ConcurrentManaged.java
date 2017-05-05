@@ -115,7 +115,7 @@ public class ConcurrentManaged<T> implements Managed<T> {
         final Borrowed<T> b = borrow();
 
         if (!b.isValid()) {
-            return async.cancelled();
+            throw new IllegalStateException("Managed reference is not valid");
         }
 
         final T reference = b.get();
